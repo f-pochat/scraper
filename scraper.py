@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 
 URL = "https://www.promiedos.com.ar"
 
+
 TARGET_LEAGUES = [
     "liga profesional argentina",
     "conmebol copa libertadores",
