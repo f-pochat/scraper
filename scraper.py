@@ -4,6 +4,12 @@ from bs4 import BeautifulSoup
 
 URL = "https://www.promiedos.com.ar"
 
+TARGET_LEAGUES = [
+    "liga profesional argentina",
+    "conmebol copa libertadores",
+    "conmebol copa sudamericana",
+]
+
 
 def find_leagues(obj, depth=0):
     """Recursively search the JSON structure for league data."""
@@ -27,42 +33,15 @@ def find_leagues(obj, depth=0):
     return []
 
 
-def fetch_matches():
-    resp = requests.get(URL, timeout=10)
-    resp.raise_for_status()
-
-    soup = BeautifulSoup(resp.text, "html.parser")
-    script_tag = soup.find("script", id="__NEXT_DATA__")
-    if not script_tag:
-        print("Could not find __NEXT_DATA__ on the page.")
-        return
-
-    data = json.loads(script_tag.string)
-    page_props = data.get("props", {}).get("pageProps", {})
-
-    leagues = page_props.get("leagues", []) or find_leagues(page_props)
-    if not leagues:
-        print("No league data found.")
-        return
-
-    liga = next(
-        (l for l in leagues if "argentina" in l.get("name", "").lower() and "liga" in l.get("name", "").lower()),
-        None,
-    )
-    if not liga:
-        print("Liga Profesional not found. Available leagues:")
-        for l in leagues:
-            print(f"  - {l.get('name')}")
-        return
-
-    games = liga.get("games", [])
+def print_league(league):
+    """Print matches for a single league."""
+    games = league.get("games", [])
     if not games:
-        print("No matches found.")
         return
 
     round_name = games[0].get("stage_round_name", "")
     print(f"{'='*56}")
-    print(f"  {liga['name']} - {round_name}")
+    print(f"  {league['name']} - {round_name}")
     print(f"{'='*56}")
     print()
 
@@ -81,6 +60,36 @@ def fetch_matches():
         print(f"  {home:>20}  {home_score} - {away_score}  {away:<20}  [{status}] {start_time}")
 
     print()
+
+
+def fetch_matches():
+    resp = requests.get(URL, timeout=30)
+    resp.raise_for_status()
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    script_tag = soup.find("script", id="__NEXT_DATA__")
+    if not script_tag:
+        print("Could not find __NEXT_DATA__ on the page.")
+        return
+
+    data = json.loads(script_tag.string)
+    page_props = data.get("props", {}).get("pageProps", {})
+
+    leagues = page_props.get("leagues", []) or find_leagues(page_props)
+    if not leagues:
+        print("No league data found.")
+        return
+
+    matched = [l for l in leagues if l.get("name", "").lower() in TARGET_LEAGUES]
+
+    if not matched:
+        print("None of the target leagues found today. Available leagues:")
+        for l in leagues:
+            print(f"  - {l.get('name')}")
+        return
+
+    for league in matched:
+        print_league(league)
 
 
 if __name__ == "__main__":
